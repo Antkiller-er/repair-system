@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0, viewport-fit=cover">
+  <title>总务智慧报修系统</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: #f5f7fa; padding: 12px; }
+    .app { max-width: 420px; margin: 0 auto; background: white; border-radius: 20px; padding: 16px 14px; overflow-x: auto; box-shadow: 0 4px 20px rgba(0,0,0,0.05); }
+
+    .app-header {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 12px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid #eef2ff;
+    }
+    .logo-container {
+      display: flex;
+      align-items: center;
+      margin-right: 12px;
+    }
+    .header-text h1 {
+      font-size: 20px;
+      font-weight: 700;
+      color: #1e293b;
+      letter-spacing: 0.5px;
+      line-height: 1;
+    }
+
+    .tabs { display: flex; gap: 6px; margin-bottom: 10px; }
+    .tab {
+      flex: 1; text-align: center; padding: 10px 4px; background: #eee;
+      border-radius: 16px; font-weight: 600; cursor: pointer; font-size: 12px;
+      white-space: nowrap; transition: all 0.2s;
+    }
+    .tab.active { background: #5b6abf; color: white; }
+    .page { display: none; }
+    .page.active { display: block; }
+    .photo-preview { width:100%; height:120px; background:#e9ecf5; border-radius:12px; margin-bottom:6px; background-size:cover; background-position:center; display:flex; align-items:center; justify-content:center; color:#aaa; font-size:13px; position: relative; }
+    .photo-preview.has-photo::before { content: none; }
+    .photo-preview::before { content: "📷"; font-size: 28px; opacity: 0.3; }
+    .btn-row { display: flex; gap: 6px; margin-bottom: 8px; }
+    .btn { border:none; padding:9px 0; border-radius:24px; font-weight:600; cursor:pointer; flex:1; text-align:center; font-size:13px; }
+    .btn-primary { background:#5b6abf; color:white; }
+    .btn-danger { background:#ef4444; color:white; }
+    .btn-success { background:#22c55e; color:white; }
+    .btn-outline { background:white; border:1px solid #ccc; color:#333; }
+    .text-input-box { width:100%; padding:10px; border:1px solid #ccc; border-radius:10px; font-size:15px; margin:5px 0; resize:vertical; min-height:50px; }
+    .stats { display:flex; gap:6px; margin-bottom:12px; }
+    .stat { flex:1; background:#f0f4ff; border-radius:10px; padding:10px; text-align:center; }
+    .stat strong { font-size:16px; }
+    .order-card { background: #fff; border-radius: 14px; padding: 10px; margin-bottom: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); border: 1px solid #eee; }
+    .order-header { display: flex; align-items: center; margin-bottom: 6px; }
+    .order-index { font-weight: 700; margin-right: 6px; font-size: 15px; }
+    .status-light { width: 10px; height: 10px; border-radius: 50%; margin-right: 5px; flex-shrink: 0; }
+    .status-light.green { background: #22c55e; }
+    .status-light.red { background: #ef4444; }
+    .order-title { font-weight: 600; font-size: 15px; flex: 1; }
+    .order-image { width: 100%; border-radius: 10px; margin: 6px 0; }
+    .info-row { display: flex; justify-content: flex-start; gap: 6px; font-size: 12px; color: #555; margin: 4px 0; flex-wrap: wrap; }
+    .info-item { background: #f8f9ff; border-radius: 6px; padding: 3px 7px; font-size: 12px; white-space: nowrap; }
+    .action-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 6px; }
+    .toggle-btn { padding: 5px 12px; border-radius: 18px; border: 1px solid #ccc; background: white; cursor: pointer; font-size: 12px; }
+    .toggle-btn.active { background: #22c55e; color: white; border-color: #22c55e; }
+    .toggle-btn.inactive { background: #ef4444; color: white; border-color: #ef4444; }
+    .checkbox-group { display: flex; gap: 6px; align-items: center; font-size:12px; }
+    .repair-person-btn { padding: 5px 10px; border-radius: 18px; border: 1px solid #ccc; background: white; cursor: pointer; font-size: 12px; position: relative; }
+    .repair-person-btn::after { content: '▼'; font-size: 9px; margin-left: 3px; }
+    .person-dropdown { position: absolute; top: 100%; left: 0; background: white; border: 1px solid #ccc; border-radius: 10px; width: 110px; padding: 4px 0; z-index: 10; display: none; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+    .person-dropdown.show { display: block; }
+    .person-option { padding: 7px 14px; cursor: pointer; font-size: 13px; }
+    .person-option:hover { background: #f0f4ff; }
+    .remark-input { border: 1px solid #ddd; border-radius: 6px; padding: 5px 8px; font-size: 13px; flex:1; }
+    .remark-save-btn { background: #5b6abf; color: white; border: none; padding: 4px 10px; border-radius: 6px; font-size: 11px; cursor: pointer; }
+    .delete-btn { background: #fff; color: #ef4444; border: 1px solid #ef4444; padding: 4px 10px; border-radius: 6px; font-size: 11px; cursor: pointer; }
+    .add-form { background:#f8f9ff; border-radius:14px; padding:10px; margin-bottom:10px; display:none; }
+    .add-form.show { display:block; }
+    .hidden { display:none !important; }
+    .chart-container { background:#fff; border-radius:14px; padding:10px; margin-bottom:10px; box-shadow:0 2px 8px rgba(0,0,0,0.06); }
+    .chart-container canvas { width:100% !important; max-height:220px; }
+    .section-title { font-weight:600; margin:10px 0 6px; font-size:14px; }
+    .summary-item { background:#f8f9ff; border-radius:6px; padding:5px 8px; font-size:12px; margin:3px 0; }
+    .voice-btn-full {
+      width:100%; padding:12px; border-radius:24px; font-size:15px; font-weight:500; cursor:pointer;
+      display:flex; align-items:center; justify-content:center; gap:8px; margin-bottom:8px;
+      background:#f0f0f0; border:2px solid #ddd; color:#333;
+      transition: all 0.15s; user-select: none; -webkit-user-select: none; touch-action: manipulation;
+    }
+    .voice-btn-full.recording { background:#ffe0e0; border-color:#e74c3c; color:#e74c3c; }
+    .voice-icon { font-size:22px; }
+    .detail-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .detail-table th, .detail-table td { border: 1px solid #eee; padding: 6px 5px; text-align: center; white-space: nowrap; }
+    .detail-table th { background: #f0f4ff; font-weight: 600; color: #333; }
+    .detail-table td { background: white; }
+    .detail-table tr:nth-child(even) td { background: #fafbff; }
+    .loading-spinner {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      padding: 36px 0; color: #5b6abf; font-weight: 600; font-size: 15px;
+    }
+    .loader {
+      border: 3px solid #f3f3f3; border-top: 3px solid #5b6abf;
+      border-radius: 50%; width: 30px; height: 30px;
+      animation: spin 1s linear infinite; margin-bottom: 10px;
+    }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+<div class="app">
+  <!-- 头部：盾形徽标 + 标题 -->
+  <div class="app-header">
+    <div class="logo-container">
+      <svg width="36" height="36" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+        <path d="M100 20 L170 50 L170 110 Q170 160 100 185 Q30 160 30 110 L30 50 Z" fill="#1a3a4a" stroke="#d4a84b" stroke-width="4"/>
+        <path d="M55 115 Q75 85 100 90 Q125 95 145 115" fill="none" stroke="#d4a84b" stroke-width="8" stroke-linecap="round"/>
+        <circle cx="100" cy="90" r="6" fill="white"/>
+        <path d="M65 120 Q80 105 100 110" fill="none" stroke="#d4a84b" stroke-width="5" stroke-linecap="round"/>
+        <path d="M135 120 Q120 105 100 110" fill="none" stroke="#d4a84b" stroke-width="5" stroke-linecap="round"/>
+      </svg>
+    </div>
+    <div class="header-text">
+      <h1>总务智慧报修系统</h1>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <div class="tab active" data-page="page-report">📸 报修</div>
+    <div class="tab" data-page="page-repair">🔧 维修</div>
+    <div class="tab" data-page="page-admin">📊 管理/数据分析</div>
+  </div>
+
+  <div id="page-report" class="page active">
+    <h3>📸 拍照报修 <span style="font-size:11px;color:#999;">(拍照可选)</span></h3>
+    <div class="photo-preview" id="photoPreview">点击下方拍照（选填）</div>
+    <input type="file" accept="image/*" capture="environment" id="cameraInput" style="display:none">
+    <div class="btn-row">
+      <button class="btn btn-primary" id="photoBtn">📸 拍照/选图</button>
+      <button class="btn btn-outline" id="annotateBtn" disabled>🖊️ 图片标注</button>
+    </div>
+    <button class="voice-btn-full" id="voiceBtnFull">
+      <span class="voice-icon">🎤</span> <span id="voiceLabel">按住说话（或下框直接打字）</span>
+    </button>
+    <textarea class="text-input-box" id="manualInput" placeholder="科室+位置+设备情况，如放射科3楼走廊灯闪"></textarea>
+    <button class="btn btn-primary" id="submitReport" style="width:100%;margin-top:8px;">提交报修</button>
+    <div id="reportMsg" style="color:red;margin-top:6px;"></div>
+  </div>
+
+  <div id="page-repair" class="page">
+    <h3>🛠️ 今日待处理工单</h3>
+    <div id="repairOrdersList">
+      <div class="loading-spinner"><div class="loader"></div><div>加载中...</div></div>
+    </div>
+  </div>
+
+  <div id="page-admin" class="page">
+    <h3>📊 统计看板</h3>
+    <div class="stats">
+      <div class="stat">待接单<br><strong id="statPending">0</strong></div>
+      <div class="stat">已完成<br><strong id="statCompleted">0</strong></div>
+      <div class="stat">逾期率<br><strong id="statOverdue">0%</strong></div>
+    </div>
+    <div style="display:flex; gap:8px; margin-bottom:12px;">
+      <button class="btn btn-primary" id="showAddFormBtn">➕ 新增报修</button>
+    </div>
+    <div id="addReportForm" class="add-form">
+      <h4 style="margin-bottom:8px;">新增报修事项</h4>
+      <textarea id="addDesc" class="text-input-box" placeholder="科室+位置+设备情况" style="min-height:40px;"></textarea>
+      <div style="display:flex; gap:8px; margin-top:8px;">
+        <input type="date" id="addDate" class="text-input-box" style="flex:1; min-height:auto;">
+        <input type="time" id="addTime" class="text-input-box" style="flex:1; min-height:auto;">
+      </div>
+      <div class="btn-row" style="margin-top:8px;">
+        <button class="btn btn-primary" id="addPhotoBtn">📸 拍照/选图</button>
+        <button class="btn btn-outline" id="addAnnotateBtn" disabled>🖊️ 标注</button>
+      </div>
+      <input type="file" accept="image/*" capture="environment" id="addCameraInput" style="display:none">
+      <div class="photo-preview" id="addPhotoPreview" style="height:100px; margin-top:8px;">照片预览（可选）</div>
+      <button class="btn btn-primary" id="submitAddReport" style="width:100%;margin-top:12px;">提交新报修</button>
+    </div>
+
+    <div class="chart-container">
+      <div class="section-title">📝 当月事件明细</div>
+      <button class="btn btn-success" id="exportMonthDetail" style="width:100%;margin-bottom:8px;">📥 导出本月维修事件明细Excel</button>
+      <button class="btn btn-success" id="exportLastMonthDetail" style="width:100%;margin-bottom:8px;">📥 导出上月维修事件明细Excel</button>
+      <div id="monthDetailTable" style="overflow-x:auto;">加载中...</div>
+    </div>
+    <div class="chart-container" id="monthSummary">
+      <div class="section-title">📋 当月统计摘要</div>
+      <div id="summaryContent">加载中...</div>
+    </div>
+    <div class="chart-container">
+      <div class="section-title">📈 当月每日逾期率曲线</div>
+      <canvas id="dailyChart"></canvas>
+      <button class="btn btn-success" id="exportDailyChart" style="width:100%;margin-top:8px;">📥 导出当月图表Excel</button>
+    </div>
+    <div class="chart-container">
+      <div class="section-title">📊 当年每月逾期率曲线</div>
+      <canvas id="monthlyChart"></canvas>
+      <button class="btn btn-success" id="exportMonthlyChart" style="width:100%;margin-top:8px;">📥 导出年度图表Excel</button>
+    </div>
+    <div style="display:flex; gap:8px; margin:16px 0;">
+      <button class="btn btn-danger" id="clearAllBtn" style="flex:1;">⚠️ 清除所有</button>
+      <button class="btn btn-danger" id="clearLastMonthBtn" style="flex:1;">🗑️ 删上个月</button>
+    </div>
+    <div id="allOrdersList"></div>
+  </div>
+</div>
+
+<!-- 标注模态框 -->
+<div id="annotationModal" style="display:none; position:fixed; z-index:999; left:0; top:0; width:100%; height:100%; background:rgba(0,0,0,0.9);">
+  <div style="position:relative; width:100%; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center;">
+    <div style="position:absolute; top:10px; right:10px; z-index:1000;">
+      <button id="clearAnnotBtn" style="background:white; border:none; padding:8px 14px; border-radius:20px; font-size:14px; margin-left:6px; cursor:pointer;">撤销</button>
+      <button id="saveAnnotBtn" style="background:white; border:none; padding:8px 14px; border-radius:20px; font-size:14px; margin-left:6px; cursor:pointer;">保存标注</button>
+      <button id="closeAnnotBtn" style="background:white; border:none; padding:8px 14px; border-radius:20px; font-size:14px; margin-left:6px; cursor:pointer;">关闭</button>
+    </div>
+    <canvas id="annotationCanvas" style="max-width:100%; max-height:85%; background:white; touch-action:none;"></canvas>
+  </div>
+</div>
+
+<script>
+  const API_URL = 'https://pxxgbzgyxdrwcibxghir.supabase.co/rest/v1/repair_orders';
+  const HEADERS = {
+    'apikey': 'sb_publishable_qect4mTg7CgBochfl879GA_FD3nOkLt',
+    'Authorization': 'Bearer sb_publishable_qect4mTg7CgBochfl879GA_FD3nOkLt',
+    'Content-Type': 'application/json'
+  };
+  const repairPersons = ['陈', '刘', '肖', '孙', '罗', '倪', '潘', '林'];
+  let currentAnnotationPhoto = '', annotationCallback = null;
+  let dailyChartInstance = null, monthlyChartInstance = null;
+
+  document.querySelectorAll('.tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      const p = tab.dataset.page;
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.page').forEach(pg => pg.classList.remove('active'));
+      tab.classList.add('active'); document.getElementById(p).classList.add('active');
+      if (p === 'page-repair') loadRepairOrders();
+      if (p === 'page-admin') loadAdminData();
+    });
+  });
+
+  const photoPreview = document.getElementById('photoPreview');
+  const cameraInput = document.getElementById('cameraInput');
+  let photoDataUrl = '';
+  const annotateBtn = document.getElementById('annotateBtn');
+  document.getElementById('photoBtn').addEventListener('click', () => cameraInput.click());
+  cameraInput.addEventListener('change', (e) => {
+    const f = e.target.files[0]; if (!f) return;
+    const r = new FileReader();
+    r.onload = ev => {
+      const img = new Image();
+      img.onload = () => {
+        const maxW = 800; let w = img.width, h = img.height;
+        if (w > maxW) { h *= (maxW / w); w = maxW; }
+        const c = document.createElement('canvas'); c.width = w; c.height = h;
+        c.getContext('2d').drawImage(img, 0, 0, w, h);
+        photoDataUrl = c.toDataURL('image/jpeg', 0.6);
+        photoPreview.style.backgroundImage = `url(${photoDataUrl})`; photoPreview.textContent = '';
+        photoPreview.classList.add('has-photo'); annotateBtn.disabled = false;
+      };
+      img.src = ev.target.result;
+    };
+    r.readAsDataURL(f);
+  });
+  annotateBtn.addEventListener('click', () => {
+    if (!photoDataUrl) return alert('请先拍照');
+    startAnnotation(photoDataUrl, (newUrl) => { photoDataUrl = newUrl; photoPreview.style.backgroundImage = `url(${photoDataUrl})`; });
+  });
+  const manualInput = document.getElementById('manualInput');
+  document.getElementById('submitReport').addEventListener('click', async () => {
+    const text = manualInput.value.trim();
+    if (!text) return alert('请填写故障描述');
+    try {
+      await fetch(API_URL, { method: 'POST', headers: HEADERS, body: JSON.stringify({ photo: photoDataUrl || null, voice_text: text, refined_text: text, status: '待接单' }) });
+      alert('✅ 报修已提交！');
+      photoDataUrl = ''; photoPreview.style.backgroundImage = ''; photoPreview.textContent = '点击下方拍照（选填）';
+      photoPreview.classList.remove('has-photo'); manualInput.value = ''; annotateBtn.disabled = true;
+    } catch (e) { alert('提交失败：' + e.message); }
+  });
+
+  const annotationModal = document.getElementById('annotationModal');
+  const annotationCanvas = document.getElementById('annotationCanvas');
+  let ctx = annotationCanvas.getContext('2d'), drawing = false, annotations = [], annotImage = new Image();
+  function startAnnotation(imageUrl, callback) { currentAnnotationPhoto = imageUrl; annotationCallback = callback; annotImage.src = imageUrl; annotationModal.style.display = 'block'; }
+  annotImage.onload = () => { annotationCanvas.width = annotImage.width; annotationCanvas.height = annotImage.height; ctx.drawImage(annotImage, 0, 0); annotations = []; };
+  function getPos(e) { const rect = annotationCanvas.getBoundingClientRect(); const clientX = e.touches ? e.touches[0].clientX : e.clientX; const clientY = e.touches ? e.touches[0].clientY : e.clientY; return { x: (clientX - rect.left) * (annotationCanvas.width / rect.width), y: (clientY - rect.top) * (annotationCanvas.height / rect.height) }; }
+  annotationCanvas.addEventListener('touchstart', (e) => { drawing = true; const pos = getPos(e); ctx.beginPath(); ctx.moveTo(pos.x, pos.y); });
+  annotationCanvas.addEventListener('touchmove', (e) => { if (!drawing) return; e.preventDefault(); const pos = getPos(e); ctx.lineTo(pos.x, pos.y); ctx.strokeStyle = 'red'; ctx.lineWidth = 4; ctx.stroke(); });
+  annotationCanvas.addEventListener('touchend', () => drawing = false);
+  annotationCanvas.addEventListener('mousedown', (e) => { drawing = true; const pos = getPos(e); ctx.beginPath(); ctx.moveTo(pos.x, pos.y); });
+  annotationCanvas.addEventListener('mousemove', (e) => { if (!drawing) return; e.preventDefault(); const pos = getPos(e); ctx.lineTo(pos.x, pos.y); ctx.strokeStyle = 'red'; ctx.lineWidth = 4; ctx.stroke(); });
+  annotationCanvas.addEventListener('mouseup', () => drawing = false);
+  annotationCanvas.addEventListener('mouseleave', () => drawing = false);
+  document.getElementById('clearAnnotBtn').addEventListener('click', () => { ctx.clearRect(0,0,annotationCanvas.width, annotationCanvas.height); ctx.drawImage(annotImage,0,0); annotations = []; });
+  document.getElementById('saveAnnotBtn').addEventListener('click', () => { const newUrl = annotationCanvas.toDataURL('image/jpeg', 0.7); if (annotationCallback) annotationCallback(newUrl); annotationModal.style.display = 'none'; });
+  document.getElementById('closeAnnotBtn').addEventListener('click', () => annotationModal.style.display = 'none');
+  annotationModal.addEventListener('click', (e) => { if (e.target === annotationModal) annotationModal.style.display = 'none'; });
+
+  const voiceBtnFull = document.getElementById('voiceBtnFull');
+  const voiceLabel = document.getElementById('voiceLabel');
+  voiceBtnFull.addEventListener('click', () => { alert('语音功能暂未开放，请直接在下框打字描述。'); });
+
+  function formatTime(d) { if (!d) return ''; const dt = new Date(d); return `${dt.getMonth()+1}-${dt.getDate()} ${dt.getHours()}:${String(dt.getMinutes()).padStart(2,'0')}`; }
+  function calcDuration(start, end) {
+    if (!start || !end) return '0分钟';
+    const ms = new Date(end) - new Date(start);
+    if (ms <= 0) return '0分钟';
+    const mins = Math.floor(ms / 60000);
+    if (mins < 60) return `${mins}分钟`;
+    const hours = Math.floor(mins / 60);
+    const remainMins = mins % 60;
+    return `${hours}小时${remainMins}分钟`;
+  }
+  async function updateOrderField(id, fields) { return await fetch(API_URL + '?id=eq.' + id, { method: 'PATCH', headers: HEADERS, body: JSON.stringify(fields) }); }
+
+  window.toggleCompletion = async function(id, currentValue) { const newValue = !currentValue; const now = newValue ? new Date().toISOString() : null; await updateOrderField(id, { is_completed: newValue, completed_at: now }); loadRepairOrders(); };
+  window.updateProcessStatus = async function(id, status) { await updateOrderField(id, { process_status: status }); loadRepairOrders(); };
+  window.updateRepairPerson = async function(id, person) { await updateOrderField(id, { repair_person: person }); loadRepairOrders(); };
+  window.saveRemark = async function(id, inputId) { const input = document.getElementById(inputId); const remark = input.value.trim(); await updateOrderField(id, { remark: remark }); loadRepairOrders(); };
+  window.togglePersonDropdown = function(event, dropdownId) { event.stopPropagation(); document.getElementById(dropdownId).classList.toggle('show'); };
+  document.addEventListener('click', () => { document.querySelectorAll('.person-dropdown.show').forEach(d => d.classList.remove('show')); });
+  window.softDeleteOrder = async function(id) { if (!confirm('确定要删除这条维修记录吗？')) return; await updateOrderField(id, { deleted: true, photo: null }); loadRepairOrders(); };
+
+  async function loadRepairOrders() {
+    const c = document.getElementById('repairOrdersList'); c.innerHTML = '<div class="loading-spinner"><div class="loader"></div><div>加载中...</div></div>';
+    try {
+      const res = await fetch(API_URL + '?select=*&order=created_at.desc', { headers: HEADERS });
+      const orders = await res.json();
+      if (!orders || orders.length === 0) { c.innerHTML = '<p>暂无工单</p>'; return; }
+      const ts = new Date(); ts.setHours(0,0,0,0); const te = new Date(); te.setHours(23,59,59,999);
+      const today = orders.filter(o => { const d = new Date(o.created_at); return d >= ts && d <= te && !o.deleted; });
+      if (today.length === 0) { c.innerHTML = '<p>暂无今日工单</p>'; return; }
+      const totalToday = today.length;
+      c.innerHTML = today.map((o, index) => {
+        const isCompleted = o.is_completed === true; const processStatus = o.process_status || ''; const repairPerson = o.repair_person || ''; const remark = o.remark || '';
+        const dropdownId = 'person-dropdown-' + o.id; const remarkInputId = 'remark-input-' + o.id; const displayIndex = totalToday - index;
+        return '<div class="order-card"><div class="order-header"><span class="order-index">' + displayIndex + '.</span><div class="status-light ' + (isCompleted ? 'green' : 'red') + '"></div><span class="order-title">' + (o.refined_text || '无描述') + '</span></div>' + (o.photo ? '<img class="order-image" src="' + o.photo + '">' : '') + '<div class="info-row"><span class="info-item">📅 上报：' + formatTime(o.created_at) + '</span><span class="info-item">✅ 完成：' + (isCompleted ? formatTime(o.completed_at) : '未完成') + '</span></div><div class="info-row"><span class="info-item">⏱️ 耗时：' + (isCompleted ? calcDuration(o.created_at, o.completed_at) : '—') + '</span><span class="info-item">👤 维修人：<span style="position:relative;display:inline-block;"><button class="repair-person-btn" onclick="togglePersonDropdown(event,\'' + dropdownId + '\')">' + (repairPerson || '选择') + '</button><div id="' + dropdownId + '" class="person-dropdown">' + repairPersons.map(p => '<div class="person-option" onclick="updateRepairPerson(' + o.id + ',\'' + p + '\')">' + p + '</div>').join('') + '</div></span></span></div><div class="action-row"><button class="toggle-btn ' + (isCompleted ? 'active' : 'inactive') + '" onclick="toggleCompletion(' + o.id + ', ' + isCompleted + ')">' + (isCompleted ? '✔ 已完成' : '✘ 未完成') + '</button><div class="checkbox-group"><label><input type="radio" name="process-' + o.id + '" ' + (processStatus === '走流程中' ? 'checked' : '') + ' onchange="updateProcessStatus(' + o.id + ',\'走流程中\')"> 走流程中</label><label><input type="radio" name="process-' + o.id + '" ' + (processStatus === '协调中' ? 'checked' : '') + ' onchange="updateProcessStatus(' + o.id + ',\'协调中\')"> 协调中</label></div><div style="display:flex;align-items:center;gap:6px;width:100%;margin-top:6px;"><input type="text" id="' + remarkInputId + '" class="remark-input" placeholder="备注..." value="' + remark + '" style="flex:1;"><button class="remark-save-btn" onclick="saveRemark(' + o.id + ',\'' + remarkInputId + '\')">保存</button><button class="delete-btn" onclick="softDeleteOrder(' + o.id + ')">删除</button></div></div></div>';
+      }).join('');
+    } catch (e) { c.textContent = '加载失败：' + e.message; }
+  }
+
+  function getDaysInMonth(year, month) { return new Date(year, month + 1, 0).getDate(); }
+  function isOverdue(order) { if (!order) return false; return !order.is_completed; }
+
+  async function loadAdminData() {
+    try {
+      const res = await fetch(API_URL + '?select=*&order=created_at.desc', { headers: HEADERS });
+      const allOrders = await res.json();
+      if (!allOrders || allOrders.length === 0) { document.getElementById('summaryContent').innerHTML = '<p>暂无数据</p>'; return; }
+      const now = new Date(), thisYear = now.getFullYear(), thisMonth = now.getMonth();
+      const monthStart = new Date(thisYear, thisMonth, 1), monthEnd = new Date(thisYear, thisMonth + 1, 1);
+      const monthOrders = allOrders.filter(o => { const d = new Date(o.created_at); return d >= monthStart && d < monthEnd && !o.deleted; });
+      const monthTotal = monthOrders.length, monthCompleted = monthOrders.filter(o => o.is_completed === true).length;
+      const monthUncompleted = monthTotal - monthCompleted, monthOverdueRate = monthTotal > 0 ? ((monthUncompleted / monthTotal) * 100).toFixed(1) : '0.0';
+      document.getElementById('statPending').textContent = allOrders.filter(o => o.status === '待接单').length;
+      document.getElementById('statCompleted').textContent = allOrders.filter(o => o.is_completed === true).length;
+      document.getElementById('statOverdue').textContent = monthOverdueRate + '%';
+      document.getElementById('summaryContent').innerHTML = '<div class="summary-item">📋 当月事件总数：' + monthTotal + '</div><div class="summary-item">✅ 当月完成数：' + monthCompleted + '</div><div class="summary-item">⏰ 当月未完成数：' + monthUncompleted + '</div><div class="summary-item">📊 当月逾期率：' + monthOverdueRate + '%</div>';
+      const daysInMonth = getDaysInMonth(thisYear, thisMonth), dailyData = [];
+      for (let d = 1; d <= daysInMonth; d++) {
+        const dayStart = new Date(thisYear, thisMonth, d), dayEnd = new Date(thisYear, thisMonth, d + 1);
+        const dayOrders = monthOrders.filter(o => { const cd = new Date(o.created_at); return cd >= dayStart && cd < dayEnd; });
+        const dayTotal = dayOrders.length, dayCompleted = dayOrders.filter(o => o.is_completed === true).length, dayUncompleted = dayTotal - dayCompleted;
+        dailyData.push({ day: d, total: dayTotal, completed: dayCompleted, uncompleted: dayUncompleted, overdueRate: dayTotal > 0 ? ((dayUncompleted / dayTotal) * 100).toFixed(1) : 0 });
+      }
+      drawDailyChart(dailyData);
+      const monthlyData = [];
+      for (let m = 0; m < 12; m++) {
+        const mStart = new Date(thisYear, m, 1), mEnd = new Date(thisYear, m + 1, 1);
+        const mOrders = allOrders.filter(o => { const d = new Date(o.created_at); return d >= mStart && d < mEnd && !o.deleted; });
+        const mTotal = mOrders.length, mUncompleted = mTotal - mOrders.filter(o => o.is_completed === true).length;
+        monthlyData.push({ month: m + 1, total: mTotal, overdueRate: mTotal > 0 ? ((mUncompleted / mTotal) * 100).toFixed(1) : 0 });
+      }
+      drawMonthlyChart(monthlyData);
+      const tableContainer = document.getElementById('monthDetailTable');
+      if (monthOrders.length === 0) { tableContainer.innerHTML = '<p>当月暂无事件</p>'; }
+      else {
+        let html = '<table class="detail-table"><thead><tr><th>序号</th><th>事项</th><th>上报时间</th><th>完成时间</th><th>完成状态</th><th>其他情况</th><th>耗时</th><th>维修人</th><th>备注</th></tr></thead><tbody>';
+        monthOrders.forEach((o, i) => {
+          const isCompleted = o.is_completed === true, completedTime = isCompleted ? formatTime(o.completed_at) : '—';
+          const duration = isCompleted ? calcDuration(o.created_at, o.completed_at) : '—', statusText = isCompleted ? '已完成' : '未完成', other = o.process_status || '—';
+          html += '<tr><td>' + (i + 1) + '</td><td>' + (o.refined_text || '') + '</td><td>' + formatTime(o.created_at) + '</td><td>' + completedTime + '</td><td>' + statusText + '</td><td>' + other + '</td><td>' + duration + '</td><td>' + (o.repair_person || '—') + '</td><td>' + (o.remark || '—') + '</td></tr>';
+        });
+        html += '</tbody></table>'; tableContainer.innerHTML = html;
+      }
+      window._dailyData = dailyData; window._monthlyData = monthlyData; window._monthOrders = monthOrders; window._thisYear = thisYear; window._thisMonth = thisMonth;
+    } catch (e) { console.error(e); }
+  }
+
+  function drawDailyChart(dailyData) {
+    const canvas = document.getElementById('dailyChart'); if (!canvas) return; if (dailyChartInstance) dailyChartInstance.destroy();
+    const labels = dailyData.map(d => d.day + '日');
+    dailyChartInstance = new Chart(canvas, { type: 'line', data: { labels: labels, datasets: [{ label: '事件数', data: dailyData.map(d => d.total), borderColor: '#5b6abf', backgroundColor: 'rgba(91,106,191,0.1)', fill: true, tension: 0.3, yAxisID: 'y', borderWidth: 2 }, { label: '完成数', data: dailyData.map(d => d.completed), borderColor: '#22c55e', backgroundColor: 'rgba(34,197,94,0.1)', fill: true, tension: 0.3, yAxisID: 'y', borderWidth: 2 }, { label: '逾期率(%)', data: dailyData.map(d => parseFloat(d.overdueRate)), borderColor: '#ef4444', borderWidth: 2, tension: 0.3, yAxisID: 'y1' }] }, options: { responsive: true, plugins: { legend: { position: 'bottom' } }, scales: { y: { type: 'linear', position: 'left', title: { display: true, text: '数量' }, beginAtZero: true }, y1: { type: 'linear', position: 'right', title: { display: true, text: '逾期率(%)' }, beginAtZero: true, max: 100, grid: { drawOnChartArea: false } } } } });
+  }
+  function drawMonthlyChart(monthlyData) {
+    const canvas = document.getElementById('monthlyChart'); if (!canvas) return; if (monthlyChartInstance) monthlyChartInstance.destroy();
+    const labels = monthlyData.map(d => d.month + '月');
+    monthlyChartInstance = new Chart(canvas, { type: 'line', data: { labels: labels, datasets: [{ label: '事件数', data: monthlyData.map(d => d.total), borderColor: '#5b6abf', backgroundColor: 'rgba(91,106,191,0.1)', fill: true, tension: 0.3, yAxisID: 'y', borderWidth: 2 }, { label: '逾期率(%)', data: monthlyData.map(d => parseFloat(d.overdueRate)), borderColor: '#ef4444', borderWidth: 2, tension: 0.3, yAxisID: 'y1' }] }, options: { responsive: true, plugins: { legend: { position: 'bottom' } }, scales: { y: { type: 'linear', position: 'left', title: { display: true, text: '事件数' }, beginAtZero: true }, y1: { type: 'linear', position: 'right', title: { display: true, text: '逾期率(%)' }, beginAtZero: true, max: 100, grid: { drawOnChartArea: false } } } } });
+  }
+
+  function exportMonthDetail(monthOffset) {
+    const orders = window._monthOrders; if (!orders || orders.length === 0) return alert('暂无数据');
+    const now = new Date(); const targetMonth = now.getMonth() + monthOffset; const targetYear = now.getFullYear() + (targetMonth < 0 ? -1 : (targetMonth > 11 ? 1 : 0));
+    const monthStart = new Date(targetYear, targetMonth < 0 ? 11 : (targetMonth > 11 ? 0 : targetMonth), 1);
+    const monthEnd = new Date(targetYear, (targetMonth < 0 ? 11 : (targetMonth > 11 ? 0 : targetMonth)) + 1, 1);
+    const filtered = orders.filter(o => { const d = new Date(o.created_at); return d >= monthStart && d < monthEnd; });
+    if (filtered.length === 0) return alert('该月暂无事件');
+    const wsData = [['序号', '事项', '上报时间', '完成时间', '完成状态', '其他情况', '耗时', '维修人', '备注']];
+    filtered.forEach((o, i) => { const isCompleted = o.is_completed === true; wsData.push([i + 1, o.refined_text || '', formatTime(o.created_at), isCompleted ? formatTime(o.completed_at) : '—', isCompleted ? '已完成' : '未完成', o.process_status || '—', isCompleted ? calcDuration(o.created_at, o.completed_at) : '—', o.repair_person || '—', o.remark || '—']); });
+    const ws = XLSX.utils.aoa_to_sheet(wsData); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, '当月事件明细'); XLSX.writeFile(wb, (monthOffset === 0 ? '本月' : '上月') + '维修事件明细.xlsx');
+  }
+
+  document.getElementById('exportDailyChart').addEventListener('click', () => {
+    const data = window._dailyData; if (!data || data.length === 0) return alert('暂无数据');
+    const wsData = [['日期', '事件数', '完成数', '未完成数', '逾期率(%)']]; data.forEach(d => wsData.push([d.day + '日', d.total, d.completed, d.uncompleted, d.overdueRate]));
+    const ws = XLSX.utils.aoa_to_sheet(wsData); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, '当月每日统计'); XLSX.writeFile(wb, '当月每日统计_' + (window._thisMonth + 1) + '月.xlsx');
+  });
+  document.getElementById('exportMonthlyChart').addEventListener('click', () => {
+    const data = window._monthlyData; if (!data || data.length === 0) return alert('暂无数据');
+    const wsData = [['月份', '事件数', '逾期数', '逾期率(%)']]; data.forEach(d => wsData.push([d.month + '月', d.total, d.total - (d.completed || 0), d.overdueRate]));
+    const ws = XLSX.utils.aoa_to_sheet(wsData); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, '年度每月统计'); XLSX.writeFile(wb, '年度每月统计_' + window._thisYear + '.xlsx');
+  });
+  document.getElementById('exportMonthDetail').addEventListener('click', () => exportMonthDetail(0));
+  document.getElementById('exportLastMonthDetail').addEventListener('click', () => exportMonthDetail(-1));
+
+  let addPhotoDataUrl = ''; const addPhotoPreview = document.getElementById('addPhotoPreview'); const addCameraInput = document.getElementById('addCameraInput'); const addAnnotateBtn = document.getElementById('addAnnotateBtn');
+  document.getElementById('showAddFormBtn').addEventListener('click', () => { document.getElementById('addReportForm').classList.toggle('show'); });
+  document.getElementById('addPhotoBtn').addEventListener('click', () => addCameraInput.click());
+  addCameraInput.addEventListener('change', (e) => {
+    const f = e.target.files[0]; if (!f) return; const r = new FileReader();
+    r.onload = ev => { const img = new Image(); img.onload = () => { const maxW = 800; let w = img.width, h = img.height; if (w > maxW) { h *= (maxW / w); w = maxW; } const c = document.createElement('canvas'); c.width = w; c.height = h; c.getContext('2d').drawImage(img, 0, 0, w, h); addPhotoDataUrl = c.toDataURL('image/jpeg', 0.6); addPhotoPreview.style.backgroundImage = `url(${addPhotoDataUrl})`; addPhotoPreview.textContent = ''; addPhotoPreview.classList.add('has-photo'); addAnnotateBtn.disabled = false; }; img.src = ev.target.result; }; r.readAsDataURL(f);
+  });
+  addAnnotateBtn.addEventListener('click', () => { if (!addPhotoDataUrl) return alert('请先拍照'); startAnnotation(addPhotoDataUrl, (newUrl) => { addPhotoDataUrl = newUrl; addPhotoPreview.style.backgroundImage = `url(${addPhotoDataUrl})`; }); });
+  document.getElementById('submitAddReport').addEventListener('click', async () => {
+    const text = document.getElementById('addDesc').value.trim(); if (!text) return alert('请填写故障描述');
+    const dateVal = document.getElementById('addDate').value, timeVal = document.getElementById('addTime').value; let customTime = undefined;
+    if (dateVal) { const dt = timeVal ? dateVal + 'T' + timeVal : dateVal + 'T00:00'; customTime = new Date(dt).toISOString(); }
+    try {
+      await fetch(API_URL, { method: 'POST', headers: HEADERS, body: JSON.stringify({ photo: addPhotoDataUrl || null, voice_text: text, refined_text: text, status: '待接单', created_at: customTime }) });
+      alert('✅ 报修已添加！'); document.getElementById('addDesc').value = ''; document.getElementById('addDate').value = ''; document.getElementById('addTime').value = '';
+      addPhotoDataUrl = ''; addPhotoPreview.style.backgroundImage = ''; addPhotoPreview.textContent = '照片预览（可选）'; addPhotoPreview.classList.remove('has-photo'); addAnnotateBtn.disabled = true;
+      loadAdminData(); loadRepairOrders();
+    } catch (e) { alert('提交失败：' + e.message); }
+  });
+
+  document.getElementById('clearAllBtn').addEventListener('click', async () => { const pw = prompt('请输入管理密码：'); if (pw !== '1511') { alert('密码错误'); return; } if (!confirm('⚠️ 确定要删除所有报修记录吗？此操作不可恢复！')) return; const res = await fetch(API_URL + '?id=gt.0', { method: 'DELETE', headers: HEADERS }); if (res.ok) { alert('所有记录已清除'); loadAdminData(); loadRepairOrders(); } else { alert('清除失败，请检查权限'); } });
+  document.getElementById('clearLastMonthBtn').addEventListener('click', async () => { const pw = prompt('请输入管理密码：'); if (pw !== '1511') { alert('密码错误'); return; } if (!confirm('确定要永久删除上个月的所有数据吗？此操作不可恢复！')) return; const now = new Date(); const thisMonth = now.getMonth(); const thisYear = now.getFullYear(); const lastMonth = thisMonth === 0 ? 11 : thisMonth - 1; const lastMonthYear = thisMonth === 0 ? thisYear - 1 : thisYear; const start = new Date(Date.UTC(lastMonthYear, lastMonth, 1)).toISOString(); const end = new Date(Date.UTC(thisYear, thisMonth, 1)).toISOString(); try { const res = await fetch(API_URL + '?created_at=gte.' + start + '&created_at=lt.' + end, { method: 'DELETE', headers: HEADERS }); if (res.ok) { alert('上个月数据已删除'); loadAdminData(); loadRepairOrders(); } else { const err = await res.json(); alert('删除失败：' + err.message); } } catch (e) { alert('请求出错：' + e.message); } });
+
+  loadRepairOrders();
+</script>
+</body>
+</html>
